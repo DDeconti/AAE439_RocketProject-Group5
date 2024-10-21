@@ -31,17 +31,17 @@ rho = 1.225; % [kg/m^3] air density
 g = 9.81; % [m/s^2]
 A_rel = 0.01; % [m^2] cross-sectional area
 
-constants = [wind_velocity; rail_length; C_L; C_D; rho; g; A_rel];
+constants = [wind_velocity; rail_length; C_L; C_D; rho; g];
 
 % time constants
 tstep = 0.01; % [s]
-t_f = 10;    % [s]
+t_f = 100;    % [s]
 
 % initial values
 velocity_0 = 0; % [m/s]
-theta_0 = 0;    % [rad]
-altitude_0 = 0; % [m]
-range_0 = 0;    % [m]
+theta_0 = 0; % [rad]
+altitude_0 = 0; % [m\
+range_0 = 0;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -54,12 +54,7 @@ op = odeset("RelTol", 1e-6, "AbsTol", 1e-6); % set reasonable tolerances
 % numerically integrate using state variable vector for v(t), theta(t),
 % h(t), and z(t) for given drag inputs
 [t, trajectory_vars] = ode45(@(t, trajectory_vars) trajectory_fun(t, ...
-    trajectory_vars, constants), tr, [velocity_0; theta_0; altitude_0; ...
-    range_0], op);
-
-h = trajectory_vars(:,3)
-z = trajectory_vars(:,4)
-plot(z, h);
+    trajectory_vars, constants), tr, [radius_0; theta_0; velocity_0_no_drag; gamma_0], op);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
