@@ -12,7 +12,7 @@
 
 % Description: model the trajectory of a small rocket with a solid
 % propellant motor.
-%
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 format shortg
 format compact
@@ -23,23 +23,25 @@ clc
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Inputs/Constants:
 
-wind_velocity = 10; % [m/s]
-rail_length = 2;   % [m]
+wind_velocity = 6; % [m/s]
+rail_length = 0.5;   % [m]
 C_L = 1.5;
 C_D = 0.01;
 rho = 1.225; % [kg/m^3] air density
 g = 9.81; % [m/s^2]
-A_rel = 0.01; % [m^2] cross-sectional area
+A_rel = pi * (0.07874/2)^2; % [m^2] cross-sectional area
+tb = 1.2; % [s] burnout time, pulled from given plot of thrust vs. time:
+% https://wildmanrocketry.com/products/g74-6w?_pos=3&_sid=99a5eab6f&_ss=r
 
-constants = [wind_velocity; rail_length; C_L; C_D; rho; g; A_rel];
+constants = [wind_velocity; rail_length; C_L; C_D; rho; g; A_rel; tb];
 
 % time constants
-tstep = 0.01; % [s]
-t_f = 10;    % [s]
+tstep = 1; % [s]
+t_f = 53;    % [s]
 
 % initial values
 velocity_0 = 0; % [m/s]
-theta_0 = 0;    % [rad]
+theta_0 = pi/4;    % [rad]
 altitude_0 = 0; % [m]
 range_0 = 0;    % [m]
 
@@ -57,21 +59,30 @@ op = odeset("RelTol", 1e-6, "AbsTol", 1e-6); % set reasonable tolerances
     trajectory_vars, constants), tr, [velocity_0; theta_0; altitude_0; ...
     range_0], op);
 
-h = trajectory_vars(:,3)
-z = trajectory_vars(:,4)
-plot(z, h);
+v = trajectory_vars(:,1);
+theta = trajectory_vars(:,2);
+h = trajectory_vars(:,3);
+z = trajectory_vars(:,4);
+figure(1)
+plot(z, h); grid on;
+xlabel("Range [m]")
+ylabel("Altitude [m]")
+
+figure(2)
+plot(t, theta)
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % ODE45 solver function for velocity, theta, altitude, and range
 function trajectory_fun = trajectory_fun(t, trajectory_vars, constants)
-    
+
     % unpack trajectory variables
     velocity = trajectory_vars(1); % [m/s] total velocity
     theta = trajectory_vars(2);    % [rad] angle of total velocity
     altitude = trajectory_vars(3); % [m] altitude in inertial frame
     range = trajectory_vars(4);    % [m] range in inertial frame
-
+    
     % unpack constants
     wind_velocity = constants(1); % [m/s] assume constant wind
     rail_length = constants(2);   % [m/s] length of rail
@@ -80,39 +91,57 @@ function trajectory_fun = trajectory_fun(t, trajectory_vars, constants)
     rho = constants(5); % [kg/m^3] density of air
     g = constants(6);   % [m/s^2] constant of gravitation
     A_rel = constants(7); % [m^2] area of cross-section
-
-    m = mass(t); % [kg] mass of rocket at current time
-    V_rel = sqrt((velocity * sin(theta))^2 + (wind_velocity + ...
-        velocity * cos(theta))^2); % [m/s] relative velocity
+    tb = constants(8); % [s] burnout time
+    
+    % f(v, theta)
     psi = atan(velocity * sin(theta) / (wind_velocity + velocity * ...
         cos(theta))); % [rad] flight path angle
+    V_rel = sqrt((velocity * sin(theta))^2 + (wind_velocity + ...
+        velocity * cos(theta))^2); % [m/s] relative velocity
+    
+    % f(V_rel)
     L = 0.5 * rho * V_rel^2 * C_L * A_rel; % [N] lift force
     D = 0.5 * rho * V_rel^2 * C_D * A_rel; % [N] drag force
-    F = thrust(t);
-    dist = sqrt(altitude^2 + range^2);
+
+    % f(t)
+    if(t < tb) % before burnout
+        m = mass(t); % [kg] mass of rocket at current time
+        F = thrust(t); % [N] thrust force
+    else % after burnout
+        m = 0.921 - 0.087 * tb; % [kg] mass of rocket
+        F = 0; % [N] thrust force
+    end
     
+    % return values
     trajectory_fun = linspace(1, 1, 4)';
+    % [m/s^2] dv/dt
     trajectory_fun(1) = ((F - D) * cos(psi - theta) - L * sin(psi - ...
-        theta) - m * g * sin(theta)) / m; % [m/s^2] dv/dt
-     % [rad/s] dtheta/dt
+        theta) - m * g * sin(theta)) / m;
+    
+    dist = sqrt(altitude^2 + range^2);
+    % [rad/s] dtheta/dt
     if(dist < rail_length)
         trajectory_fun(2) = 0;
     else
         trajectory_fun(2) = ((F - D) * sin(psi - theta) + L * cos(psi - ...
-            theta) - m * g * cos(theta)) / (m * trajectory_fun(1));
+            theta) - m * g * cos(theta)) / (m * velocity);
     end
+    
     % [m/s] dh/dt
-    trajectory_fun(3) = trajectory_fun(1) * sin(trajectory_fun(2));
+    trajectory_fun(3) = velocity * sin(theta);
+    % trajectory_fun(3) = trajectory_fun(1) * sin(trajectory_fun(2));
+    
     % [m/s] dz/dt
-    trajectory_fun(4) = trajectory_fun(1) * cos(trajectory_fun(2));
+    trajectory_fun(4) = velocity * cos(theta);
+    % trajectory_fun(4) = trajectory_fun(1) * cos(trajectory_fun(2));
 end
 
 % [N] thrust function
 function thrust = thrust(time)
-    thrust = 78;
+    thrust = 78; % [N]
 end
 
 % [kg] mass function
 function mass = mass(time)
-    mass = 1 - 0.01 * time;
+    mass = 0.921 - 0.087 * time; % [kg]
 end
