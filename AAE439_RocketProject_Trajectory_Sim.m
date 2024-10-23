@@ -25,19 +25,20 @@ clc
 
 wind_velocity = 6; % [m/s]
 rail_length = 0.5;   % [m]
-C_L = 1.5;
-C_D = 0.01;
+C_L = 0.15; % [1] lift coefficient
+C_D = 0.4; % [1] drag coefficient
 rho = 1.225; % [kg/m^3] air density
 g = 9.81; % [m/s^2]
 A_rel = pi * (0.07874/2)^2; % [m^2] cross-sectional area
 tb = 1.2; % [s] burnout time, pulled from given plot of thrust vs. time:
 % https://wildmanrocketry.com/products/g74-6w?_pos=3&_sid=99a5eab6f&_ss=r
+t_chute = tb + 6; % [s] time chute deploys after burnout
 
 constants = [wind_velocity; rail_length; C_L; C_D; rho; g; A_rel; tb];
 
 % time constants
-tstep = 1; % [s]
-t_f = 53;    % [s]
+tstep = 0.1; % [s]
+t_f = 7.5;    % [s]
 
 % initial values
 velocity_0 = 0; % [m/s]
@@ -63,20 +64,25 @@ v = trajectory_vars(:,1);
 theta = trajectory_vars(:,2);
 h = trajectory_vars(:,3);
 z = trajectory_vars(:,4);
+
 figure(1)
+subplot(2, 1, 1)
 plot(z, h); grid on;
 xlabel("Range [m]")
 ylabel("Altitude [m]")
 
-figure(2)
-plot(t, theta)
+subplot(2, 1, 2)
+plot(t, theta); grid on;
+xlabel("Time [s]")
+ylabel("Theta [rad]")
+set(gcf, 'Position', [500 100 700 800])
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % ODE45 solver function for velocity, theta, altitude, and range
 function trajectory_fun = trajectory_fun(t, trajectory_vars, constants)
-
+    
     % unpack trajectory variables
     velocity = trajectory_vars(1); % [m/s] total velocity
     theta = trajectory_vars(2);    % [rad] angle of total velocity
@@ -118,7 +124,7 @@ function trajectory_fun = trajectory_fun(t, trajectory_vars, constants)
     trajectory_fun(1) = ((F - D) * cos(psi - theta) - L * sin(psi - ...
         theta) - m * g * sin(theta)) / m;
     
-    dist = sqrt(altitude^2 + range^2);
+    dist = sqrt(altitude^2 + range^2);    
     % [rad/s] dtheta/dt
     if(dist < rail_length)
         trajectory_fun(2) = 0;
@@ -129,11 +135,10 @@ function trajectory_fun = trajectory_fun(t, trajectory_vars, constants)
     
     % [m/s] dh/dt
     trajectory_fun(3) = velocity * sin(theta);
-    % trajectory_fun(3) = trajectory_fun(1) * sin(trajectory_fun(2));
     
     % [m/s] dz/dt
     trajectory_fun(4) = velocity * cos(theta);
-    % trajectory_fun(4) = trajectory_fun(1) * cos(trajectory_fun(2));
+
 end
 
 % [N] thrust function
