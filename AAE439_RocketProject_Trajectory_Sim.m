@@ -2,7 +2,7 @@
 
 % Course: AAE43900 - 001
 
-% Date: October 27, 2024
+% Date: November 9, 2024
 
 % Co-Authors:
 % Daniel DeConti
@@ -31,9 +31,11 @@ g = 9.81; % [m/s^2]
 A_rel = pi * (0.07874/2)^2; % [m^2] cross-sectional area
 tb = 1.2; % [s] burnout time, pulled from given plot of thrust vs. time:
 % https://wildmanrocketry.com/products/g74-6w?_pos=3&_sid=99a5eab6f&_ss=r
-t_chute = tb + 6; % [s] time chute deploys after burnout
+t_chute = tb + 6.5; % [s] time chute fully deploys after burnout
+chute_CdA = 0.16; % [m^2] product of chute drag coefficient and area
 
-constants = [wind_velocity; rail_length; C_D; rho; g; A_rel; tb];
+constants = [wind_velocity; rail_length; C_D; rho; g; A_rel; tb; ...
+    t_chute; chute_CdA];
 
 % time constants
 tstep = 0.01; % [s]
@@ -98,6 +100,8 @@ function trajectory_fun = trajectory_fun(t, trajectory_vars, constants)
     g = constants(5);   % [m/s^2] constant of gravitation
     A_rel = constants(6); % [m^2] area of cross-section
     tb = constants(7); % [s] burnout time
+    t_chute = constants(8); % [s] chute deployment time
+    chute_CdA = constants(9); % [m^2] chute Cd * A
     
     % f(v, theta)
     V_rel = sqrt((velocity * sin(theta))^2 + (wind_velocity + ...
@@ -108,7 +112,12 @@ function trajectory_fun = trajectory_fun(t, trajectory_vars, constants)
     % psi = asin((velocity*sin(theta) / V_rel));
     
     % f(V_rel)
-    D = 0.5 * rho * V_rel^2 * C_D * A_rel; % [N] drag force
+    if(t > t_chute)
+        % [N] drag force with chute
+        D = 0.5 * rho * V_rel^2 * (C_D * A_rel + chute_CdA);
+    else
+        D = 0.5 * rho * V_rel^2 * C_D * A_rel; % [N] drag force, no chute
+    end
 
     % f(t)
     if(t < tb) % before burnout
