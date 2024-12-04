@@ -39,11 +39,11 @@ constants = [wind_velocity; rail_length; C_D; rho; g; A_rel; tb; ...
 
 % time constants
 tstep = 0.01; % [s]
-t_f = 20;    % [s]
+t_f = 40;    % [s]
 
 % initial values
 velocity_0 = 0; % [m/s]
-theta_0 = pi/3;    % [rad]
+theta_0 = 83.42 * pi/180;    % [rad]
 altitude_0 = 0; % [m]
 range_0 = 0;    % [m]
 
@@ -79,6 +79,14 @@ plot(t, theta); grid on;
 xlabel("Time [s]")
 ylabel("Theta [rad]")
 set(gcf, 'Position', [500 100 700 800])
+
+figure(2);
+plot(t, z);
+title("range")
+
+figure(3);
+plot(t, h);
+title("altitude")
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
